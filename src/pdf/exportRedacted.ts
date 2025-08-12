@@ -1,7 +1,11 @@
-import { PDFDocument, rgb } from 'pdf-lib';
-import type { OcrField } from '../types';
+import { PDFDocument, rgb } from "pdf-lib";
+import type { OcrField } from "../types";
 
-export async function exportRedactedPdf(originalFile: File, canvases: HTMLCanvasElement[], selectedFields: OcrField[]): Promise<Blob> {
+export async function exportRedactedPdf(
+  originalFile: File,
+  canvases: HTMLCanvasElement[],
+  selectedFields: OcrField[]
+): Promise<Blob> {
   const pdfBytes = await originalFile.arrayBuffer();
   const pdfDoc = await PDFDocument.load(pdfBytes);
   const fieldsByPage = new Map<number, OcrField[]>();
@@ -25,11 +29,15 @@ export async function exportRedactedPdf(originalFile: File, canvases: HTMLCanvas
       const pdfW = (x1 - x0) * scaleX;
       const pdfH = (y1 - y0) * scaleY;
       const pdfY = pageHeight - y1 * scaleY;
-      page.drawRectangle({ x: pdfX, y: pdfY, width: pdfW, height: pdfH, color: rgb(0, 0, 0) });
+      page.drawRectangle({
+        x: pdfX,
+        y: pdfY,
+        width: pdfW,
+        height: pdfH,
+        color: rgb(0, 0, 0),
+      });
     }
   }
   const out = await pdfDoc.save();
-  return new Blob([out], { type: 'application/pdf' });
+  return new Blob([out as unknown as ArrayBuffer], { type: "application/pdf" });
 }
-
-
