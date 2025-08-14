@@ -1,10 +1,11 @@
-import { GlobalWorkerOptions } from 'pdfjs-dist';
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?worker';
+import { GlobalWorkerOptions } from "pdfjs-dist";
+
+// Tạo sẵn Worker
+const pdfWorker = new Worker(
+  new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url),
+  { type: "module" } // với ESM thì cần type module
+);
 
 export function setupPdfJsWorker() {
-  GlobalWorkerOptions.workerPort = new pdfWorker();
+  GlobalWorkerOptions.workerPort = pdfWorker;
 }
-
-

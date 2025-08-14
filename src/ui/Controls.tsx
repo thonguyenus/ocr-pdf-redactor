@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import styled from "styled-components";
+import { EmailTemplateModal } from "./EmailTemplateModal";
 
 const ControlsRow = styled.div`
   display: flex;
@@ -178,6 +179,7 @@ export type ControlsProps = {
   onRunOcr: () => void;
   onExport: () => void;
   canExport: boolean;
+  ocrFields: any[];
 };
 
 export const Controls: React.FC<ControlsProps> = ({
@@ -188,8 +190,10 @@ export const Controls: React.FC<ControlsProps> = ({
   onRunOcr,
   onExport,
   canExport,
+  ocrFields,
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -216,46 +220,60 @@ export const Controls: React.FC<ControlsProps> = ({
   };
 
   return (
-    <ControlsRow>
-      <Button disabled={!canRunOcr} onClick={onRunOcr}>
-        {isOcrRunning ? "Running OCR…" : "Run OCR"}
-      </Button>
+    <>
+      <ControlsRow>
+        <Button disabled={!canRunOcr} onClick={onRunOcr}>
+          {isOcrRunning ? "Running OCR…" : "Run OCR"}
+        </Button>
 
-      <DropdownContainer ref={dropdownRef}>
-        <DropdownButton
-          onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-          type="button"
-        >
-          <EngineLabel>
-            <EngineTitle>{selectedEngine?.title}</EngineTitle>
-            <EngineDescription>{selectedEngine?.description}</EngineDescription>
-          </EngineLabel>
-          <DropdownIcon isOpen={isDropdownOpen}>
-            <svg viewBox="0 0 24 24">
-              <path d="M7 10l5 5 5-5z" />
-            </svg>
-          </DropdownIcon>
-        </DropdownButton>
+        <OutlineButton onClick={() => setIsEmailModalOpen(true)}>
+          Email Template
+        </OutlineButton>
 
-        <DropdownMenu isOpen={isDropdownOpen}>
-          {engineOptions.map((option) => (
-            <DropdownOption
-              key={option.value}
-              isSelected={ocrEngine === option.value}
-              onClick={() => handleEngineSelect(option.value)}
-            >
-              <EngineLabel>
-                <EngineTitle>{option.title}</EngineTitle>
-                <EngineDescription>{option.description}</EngineDescription>
-              </EngineLabel>
-            </DropdownOption>
-          ))}
-        </DropdownMenu>
-      </DropdownContainer>
+        <DropdownContainer ref={dropdownRef}>
+          <DropdownButton
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            type="button"
+          >
+            <EngineLabel>
+              <EngineTitle>{selectedEngine?.title}</EngineTitle>
+              <EngineDescription>
+                {selectedEngine?.description}
+              </EngineDescription>
+            </EngineLabel>
+            <DropdownIcon isOpen={isDropdownOpen}>
+              <svg viewBox="0 0 24 24">
+                <path d="M7 10l5 5 5-5z" />
+              </svg>
+            </DropdownIcon>
+          </DropdownButton>
 
-      <OutlineButton disabled={!canExport} onClick={onExport}>
-        Download redacted PDF
-      </OutlineButton>
-    </ControlsRow>
+          <DropdownMenu isOpen={isDropdownOpen}>
+            {engineOptions.map((option) => (
+              <DropdownOption
+                key={option.value}
+                isSelected={ocrEngine === option.value}
+                onClick={() => handleEngineSelect(option.value)}
+              >
+                <EngineLabel>
+                  <EngineTitle>{option.title}</EngineTitle>
+                  <EngineDescription>{option.description}</EngineDescription>
+                </EngineLabel>
+              </DropdownOption>
+            ))}
+          </DropdownMenu>
+        </DropdownContainer>
+
+        <OutlineButton disabled={!canExport} onClick={onExport}>
+          Download redacted PDF
+        </OutlineButton>
+      </ControlsRow>
+
+      <EmailTemplateModal
+        open={isEmailModalOpen}
+        onClose={() => setIsEmailModalOpen(false)}
+        ocrFields={ocrFields}
+      />
+    </>
   );
 };
