@@ -77,6 +77,8 @@ export const App: React.FC = () => {
   const [ocrFields, setOcrFields] = useState<OcrField[]>([]);
   const [selectedFieldIds, setSelectedFieldIds] = useState<Set<string>>(new Set());
   const [ocrEngine, setOcrEngine] = useState<'tesseract' | 'gcv'>('tesseract');
+  const [activeFieldId, setActiveFieldId] = useState<string | null>(null);
+  const [pulseTick, setPulseTick] = useState(0);
   
 
   // Handle file upload
@@ -141,7 +143,7 @@ export const App: React.FC = () => {
     return runOcrGcv();
   }, [ocrEngine, runOcrGcv, runOcrTesseract]);
 
-  // Draw overlays for selected fields
+  // Draw overlays for selected fields and active pulse highlight
   useEffect(() => {
     const overlays = overlayRefs.current;
     if (!overlays || overlays.length === 0) return;
@@ -170,7 +172,29 @@ export const App: React.FC = () => {
         ctx.fillRect(x0, y0, width, height);
       }
     }
-  }, [ocrFields, selectedFieldIds]);
+
+    // active pulse highlight (draw on top)
+    if (activeFieldId) {
+      const activeField = ocrFields.find(f => f.id === activeFieldId && f.bbox);
+      if (activeField && activeField.bbox) {
+        const overlay = overlays[activeField.pageIndex];
+        const ctx = overlay?.getContext('2d');
+        if (overlay && ctx) {
+          const { x0, y0, x1, y1 } = activeField.bbox;
+          const width = x1 - x0;
+          const height = y1 - y0;
+          const alpha = 0.45 + 0.35 * Math.abs(Math.sin(pulseTick / 3));
+          ctx.save();
+          ctx.strokeStyle = `rgba(34,197,94,${alpha.toFixed(3)})`; // green
+          ctx.lineWidth = 4;
+          ctx.shadowColor = `rgba(34,197,94,${alpha.toFixed(3)})`;
+          ctx.shadowBlur = 8;
+          ctx.strokeRect(x0 - 1, y0 - 1, width + 2, height + 2);
+          ctx.restore();
+        }
+      }
+    }
+  }, [ocrFields, selectedFieldIds, activeFieldId, pulseTick]);
 
   const onToggleSelect = useCallback((id: string) => {
     setSelectedFieldIds(prev => {
@@ -208,6 +232,36 @@ export const App: React.FC = () => {
   const canRunOcr = !!pdfProxy && !isOcrRunning;
   const hasPdf = !!pdfProxy;
 
+  // Handle canvas click -> find field and activate pulse + auto-clear
+  const onCanvasClick = useCallback((pageIndex: number, x: number, y: number) => {
+    if (!ocrFields.length) return;
+    const candidates = ocrFields.filter(f => f.pageIndex === pageIndex && f.bbox);
+    const inside = candidates.filter(f => {
+      const b = f.bbox!;
+      const minX = Math.min(b.x0, b.x1);
+      const maxX = Math.max(b.x0, b.x1);
+      const minY = Math.min(b.y0, b.y1);
+      const maxY = Math.max(b.y0, b.y1);
+      return x >= minX && x <= maxX && y >= minY && y <= maxY;
+    });
+    const target = inside[0] ?? null;
+    if (!target) return; // only select when click is inside a box
+    setActiveFieldId(target.id);
+  }, [ocrFields]);
+
+  // Auto-clear pulse after 3s and drive pulseTick animation
+  useEffect(() => {
+    if (!activeFieldId) return;
+    let raf: number | null = null;
+    const interval = setInterval(() => setPulseTick(v => v + 1), 120);
+    const timeout = setTimeout(() => setActiveFieldId(null), 3000);
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  }, [activeFieldId]);
+
   return (
     <>
       <GlobalStyle />
@@ -237,12 +291,12 @@ export const App: React.FC = () => {
 
           <Panel>
             <h3>Recognized fields</h3>
-            <FieldsList fields={ocrFields} selectedIds={selectedFieldIds} onToggle={onToggleSelect} onCopy={copyToClipboard} />
+            <FieldsList fields={ocrFields} selectedIds={selectedFieldIds} onToggle={onToggleSelect} onCopy={copyToClipboard} activeId={activeFieldId} />
             {renderError && (<div style={{ color: '#b91c1c', fontSize: 12, marginTop: 8 }}>{renderError}</div>)}
           </Panel>
         </Sidebar>
 
-        <PdfViewer canvases={canvases} overlayRefs={overlayRefs} hasPdf={hasPdf} />
+        <PdfViewer canvases={canvases} overlayRefs={overlayRefs} hasPdf={hasPdf} onCanvasClick={onCanvasClick} />
       </Container>
     </>
   );
